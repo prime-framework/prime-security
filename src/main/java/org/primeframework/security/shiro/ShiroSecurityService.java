@@ -4,6 +4,7 @@
 package org.primeframework.security.shiro;
 
 import java.security.Principal;
+import java.util.Set;
 
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.UnavailableSecurityManagerException;
@@ -11,6 +12,8 @@ import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationToken;
 import org.apache.shiro.authc.IncorrectCredentialsException;
 import org.apache.shiro.crypto.hash.SimpleHash;
+import org.joda.time.DateTime;
+import org.primeframework.security.AuthenticationListener;
 import org.primeframework.security.PrimeAuthenticationToken;
 import org.primeframework.security.PrimePrincipal;
 import org.primeframework.security.SecurityService;
@@ -18,12 +21,22 @@ import org.primeframework.security.error.InvalidCredentialsException;
 import org.primeframework.security.error.PrimeSecurityException;
 import org.primeframework.security.error.UndefinedPrincipalException;
 
+import com.google.inject.Inject;
+
 /**
  * Shiro implementation of the cleanspeak security service
  *
  * @author James Humphrey
  */
 public class ShiroSecurityService<T extends PrimePrincipal> implements SecurityService<T> {
+
+
+  private final Set<AuthenticationListener<T>> authenticationListeners;
+
+  @Inject
+  public ShiroSecurityService(Set<AuthenticationListener<T>> authenticationListeners) {
+    this.authenticationListeners = authenticationListeners;
+  }
 
   @Override
   public void login(PrimeAuthenticationToken primeAuthenticationToken) {
@@ -45,12 +58,20 @@ public class ShiroSecurityService<T extends PrimePrincipal> implements SecurityS
         }
       }
     }
+
+    for (AuthenticationListener<T> authenticationListener : authenticationListeners) {
+      authenticationListener.onLogin(getPrincipal());
+    }
   }
 
   @Override
   public void logout() {
     if (isLoggedIn()) {
       SecurityUtils.getSubject().logout();
+    }
+
+    for (AuthenticationListener<T> authenticationListener : authenticationListeners) {
+      authenticationListener.onLogout(getPrincipal(), new DateTime());
     }
   }
 
@@ -66,7 +87,7 @@ public class ShiroSecurityService<T extends PrimePrincipal> implements SecurityS
 
   @Override
   @SuppressWarnings(value = "unchecked")
-  public T getPrincipals() {
+  public T getPrincipal() {
     if (isLoggedIn()) {
       return (T) SecurityUtils.getSubject().getPrincipals().oneByType(Principal.class);
     } else {

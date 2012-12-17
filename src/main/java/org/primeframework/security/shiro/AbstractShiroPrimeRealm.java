@@ -16,8 +16,6 @@ import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.util.ByteSource;
 import org.apache.shiro.util.SimpleByteSource;
-import org.joda.time.DateTime;
-import org.primeframework.security.AuthenticationListener;
 import org.primeframework.security.PrimePrincipal;
 import org.primeframework.security.error.UndefinedPrincipalException;
 
@@ -28,12 +26,8 @@ import com.google.inject.Inject;
  */
 public abstract class AbstractShiroPrimeRealm<T extends PrimePrincipal, S extends ShiroPrimeAuthenticationToken> extends AuthorizingRealm {
 
-  private final Set<AuthenticationListener<T>> authenticationListeners;
-
   @Inject
-  public AbstractShiroPrimeRealm(CredentialsMatcher credentialsMatcher,
-                                 Set<AuthenticationListener<T>> authenticationListeners) {
-    this.authenticationListeners = authenticationListeners;
+  public AbstractShiroPrimeRealm(CredentialsMatcher credentialsMatcher) {
     this.setCredentialsMatcher(credentialsMatcher);
   }
 
@@ -67,39 +61,6 @@ public abstract class AbstractShiroPrimeRealm<T extends PrimePrincipal, S extend
     ByteSource saltByteSource = new SimpleByteSource(salt);
 
     return new SimpleAuthenticationInfo(principal, principal.hashedCredentials(), saltByteSource, realmName());
-  }
-
-  /**
-   * If credentials match, then assumed login success and create a new event log entry
-   *
-   * @param token the auth token
-   * @param info  the auth info
-   * @throws AuthenticationException
-   */
-  @Override
-  @SuppressWarnings(value = "unchecked")
-  protected void assertCredentialsMatch(AuthenticationToken token, AuthenticationInfo info) throws AuthenticationException {
-
-    super.assertCredentialsMatch(token, info);
-
-    T principal = (T) info.getPrincipals().getPrimaryPrincipal();
-
-    for (AuthenticationListener<T> authenticationListener : authenticationListeners) {
-      authenticationListener.onLogin(principal);
-    }
-  }
-
-  @Override
-  @SuppressWarnings(value = "unchecked")
-  public void onLogout(PrincipalCollection principals) {
-
-    super.onLogout(principals);
-
-    T principal = (T) principals.getPrimaryPrincipal();
-
-    for (AuthenticationListener<T> authenticationListener : authenticationListeners) {
-      authenticationListener.onLogout(principal, new DateTime());
-    }
   }
 
   /**

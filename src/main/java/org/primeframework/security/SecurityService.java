@@ -35,7 +35,7 @@ public interface SecurityService<T extends PrimePrincipal> {
    * Returns the principals associated to the currently authenticated user.  Principals are any information that
    * uniquely identifies an account in your system
    */
-  T getPrincipals();
+  T getPrincipal();
 
   /**
    * Encrypts a password
